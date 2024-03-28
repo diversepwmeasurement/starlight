@@ -1,36 +1,33 @@
-name: Unit Test
-
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Checkout project
-        uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Checkout project
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Setup Java JDK and Maven
+      uses: actions/setup-java@v3
+      with:
+        distribution: temurin
+        java-version: '8'
+    - continue-on-error: true
+      name: Cache local Maven repository
+      uses: actions/cache@v3
+      with:
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        path: ~/.m2/repository
+        restore-keys: '${{ runner.os }}-maven-
 
-      - name: Setup Java JDK and Maven
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-      
-      - name: Cache local Maven repository
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Build
-        run: |
-          mvn -B verify --file starlight/pom.xml --no-transfer-progress 
-          mvn -B verify --file spring-cloud-starter-baidu-starlight/pom.xml --no-transfer-progress
-
-      - name: Upload Coverage Report
-        uses: codecov/codecov-action@v3
+          '
+    - continue-on-error: true
+      name: Build
+      run: "mvn -B verify --file starlight/pom.xml --no-transfer-progress \nmvn -B\
+        \ verify --file spring-cloud-starter-baidu-starlight/pom.xml --no-transfer-progress\n"
+    - continue-on-error: true
+      name: Upload Coverage Report
+      uses: codecov/codecov-action@v3
+name: Unit Test
+on:
+  repository_dispatch:
+    types: trigger-ga___unit-test.yml

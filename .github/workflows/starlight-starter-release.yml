@@ -1,67 +1,65 @@
-name: Starlight Starter Release
-
-on:
-  workflow_dispatch:
-    inputs:
-      releaseVersion:
-        description: "Default version to use when preparing a release."
-        required: true
-        default: "X.Y.Z"
-      developmentVersion:
-        description: "Default version to use for new local working copy."
-        required: true
-        default: "X.Y.Z-SNAPSHOT"
-
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Checkout project
-        uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Checkout project
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Setup Java JDK and Maven
+      uses: actions/setup-java@v3
+      with:
+        distribution: temurin
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        gpg-private-key: ${{ secrets.GPG_SECRET }}
+        java-version: '8'
+        server-id: ossrh
+        server-password: MAVEN_PASSWORD
+        server-username: MAVEN_USERNAME
+    - continue-on-error: true
+      name: Configure Git user
+      run: 'git config user.email "actions@github.com"
 
-      - name: Setup Java JDK and Maven
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-          gpg-private-key: ${{ secrets.GPG_SECRET }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        git config user.name "GitHub Actions"
 
-      - name: Configure Git user
-        run: |
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
+        '
+    - continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSWD }}
+        MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWD }}
+        MAVEN_USERNAME: ${{ secrets.OSSRH_USER }}
+      name: Publish package
+      run: 'cd spring-cloud-starter-baidu-starlight
 
-      - name: Publish package
-        run: |
-          cd spring-cloud-starter-baidu-starlight
-          mvn -B release:prepare release:perform -P deploy -Darguments="-Dmaven.test.skip" -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{ github.event.inputs.developmentVersion }} --no-transfer-progress
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USER }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSWD }}
+        mvn -B release:prepare release:perform -P deploy -Darguments="-Dmaven.test.skip"
+        -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{
+        github.event.inputs.developmentVersion }} --no-transfer-progress
 
-      - name: Generate changelog
-        id: changelog
-        uses: metcalfc/changelog-generator@v4.0.1
-        with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
+        '
+    - continue-on-error: true
+      id: changelog
+      name: Generate changelog
+      uses: metcalfc/changelog-generator@v4.0.1
+      with:
+        myToken: ${{ secrets.GITHUB_TOKEN }}
+    - continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: create_release
+      name: Create GitHub Release
+      uses: actions/create-release@v1
+      with:
+        body: '### Things that changed in this release
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: starter-v${{ github.event.inputs.releaseVersion }}
-          release_name: starter-v${{ github.event.inputs.releaseVersion }}
-          body: |
-            ### Things that changed in this release
-            ${{ steps.changelog.outputs.changelog }}
-          draft: true
-          prerelease: false
+          ${{ steps.changelog.outputs.changelog }}
+
+          '
+        draft: true
+        prerelease: false
+        release_name: starter-v${{ github.event.inputs.releaseVersion }}
+        tag_name: starter-v${{ github.event.inputs.releaseVersion }}
+name: Starlight Starter Release
+on:
+  repository_dispatch:
+    types: trigger-ga___starlight-starter-release.yml

@@ -1,45 +1,51 @@
-name: Snapshot
-on:
-  push:
-    branches: [ "main" ]
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Checkout project
-        uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Checkout project
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Setup Java JDK and Maven
+      uses: actions/setup-java@v3
+      with:
+        distribution: temurin
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        gpg-private-key: ${{ secrets.GPG_SECRET }}
+        java-version: '8'
+        server-id: ossrh
+        server-password: MAVEN_PASSWORD
+        server-username: MAVEN_USERNAME
+    - continue-on-error: true
+      name: Configure Git user
+      run: 'git config user.email "actions@github.com"
 
-      - name: Setup Java JDK and Maven
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-          gpg-private-key: ${{ secrets.GPG_SECRET }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        git config user.name "GitHub Actions"
 
-      - name: Configure Git user
-        run: |
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
+        '
+    - continue-on-error: true
+      name: Cache local Maven repository
+      uses: actions/cache@v3
+      with:
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        path: ~/.m2/repository
+        restore-keys: '${{ runner.os }}-maven-
 
-      - name: Cache local Maven repository
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          '
+    - continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSWD }}
+        MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWD }}
+        MAVEN_USERNAME: ${{ secrets.OSSRH_USER }}
+      name: Publish Snaphot package
+      run: 'mvn -B deploy -P deploy -Dmaven.test.skip --file starlight/pom.xml --no-transfer-progress
 
-      - name: Publish Snaphot package
-        run: |
-          mvn -B deploy -P deploy -Dmaven.test.skip --file starlight/pom.xml --no-transfer-progress
-          mvn -B deploy -P deploy -Dmaven.test.skip --file spring-cloud-starter-baidu-starlight/pom.xml --no-transfer-progress
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USER }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSWD }}
+        mvn -B deploy -P deploy -Dmaven.test.skip --file spring-cloud-starter-baidu-starlight/pom.xml
+        --no-transfer-progress
+
+        '
+name: Snapshot
+on:
+  repository_dispatch:
+    types: trigger-ga___snapshot.yml
